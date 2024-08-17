@@ -139,7 +139,7 @@ func getStock(id int64) (models.Stock, error) {
 
 	defer db.Close()
 
-	sqlStatement := `SELECT * FROM stocks WHERE stocksid = $1`
+	sqlStatement := `SELECT * FROM stokes WHERE stokesid = $1`
 	var stock models.Stock
 	rows := db.QueryRow(sqlStatement, id)
 	err := rows.Scan(&stock.Name, &stock.Price, &stock.Company)
@@ -191,7 +191,7 @@ func deletStock(id int64) int64 {
 	db := createConnection()
 	defer db.Close()
 
-	sqlStatment := `DELETE FROM stocks WHRER stocksid=$1`
+	sqlStatment := `DELETE FROM stokes WHRER stokesid=$1`
 
 	res, err := db.Exec(sqlStatment, id)
 	if err != nil {
@@ -212,7 +212,7 @@ func updateStock(id int64, stock models.Stock) int64 {
 	db := createConnection()
 	defer db.Close()
 
-	sqlStatment := `UPDATE stocks SET name=$2,price=$3,company=$4 WHRER stocksid=$1`
+	sqlStatment := `UPDATE stokes SET name=$2,price=$3,company=$4 WHRER stokesid=$1`
 
 	res, err := db.Exec(sqlStatment, id, stock.Name, stock.Price, stock.Company)
 	if err != nil {
