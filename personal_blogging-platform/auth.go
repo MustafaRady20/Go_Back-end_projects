@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -36,19 +36,19 @@ func (s *APIServer) Register(w http.ResponseWriter, r *http.Request) error {
 		return WriteJSON(w, http.StatusBadRequest, "Password is Not valid.")
 	}
 
-	hasedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 12)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), 12)
 	if err != nil {
-		return WriteJSON(w, http.StatusBadRequest, "can not generate password hash")
+		return WriteJSON(w, http.StatusBadRequest, "Cannot generate password hash")
 	}
 
-	storedData := NewUser(user.FirstName, user.LastName, user.Email, string(hasedPassword))
+	storedData := NewUser(user.FirstName, user.LastName, user.Email, string(hashedPassword))
 	err = s.store.CreateUser(storedData)
 	if err != nil {
 		return WriteJSON(w, http.StatusBadRequest, err)
 	}
 	return nil
-
 }
+
 func (s *APIServer) Login(w http.ResponseWriter, r *http.Request) error {
 	loginReq := &LoginRequest{}
 	err := json.NewDecoder(r.Body).Decode(&loginReq)
@@ -72,10 +72,11 @@ func (s *APIServer) Login(w http.ResponseWriter, r *http.Request) error {
 
 	return WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 }
+
 func createJwt(id string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"userId":    id,
-		"expiresAt": time.Now().Add(time.Hour * 24 * 30).Unix(),
+		"expiresAt": time.Now().Add(time.Minute * 15).Unix(),
 	})
 
 	secretKey := os.Getenv("SECRET_KEY")
@@ -94,33 +95,48 @@ func createJwt(id string) (string, error) {
 func isAuthorized(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
+
+		if !strings.HasPrefix(tokenString, "Bearer ") {
+			WriteJSON(w, http.StatusUnauthorized, "Authorization token format must be Bearer <token>")
+			return
+		}
+
+		tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+
 		token, err := verifyToken(tokenString)
 		if err != nil {
-			log.Fatal("Not able to validate the token")
-			WriteJSON(w, http.StatusBadRequest, err.Error())
+			if err == jwt.ErrTokenExpired {
+				WriteJSON(w, http.StatusUnauthorized, "Token has expired")
+				return
+			}
+			WriteJSON(w, http.StatusBadRequest, "Invalid token: "+err.Error())
 			return
 		}
+
 		if !token.Valid {
-			log.Fatal("Not A Valid token")
+			WriteJSON(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
 
-		cliams := token.Claims.(jwt.MapClaims)
+		claims := token.Claims.(jwt.MapClaims)
 
-		id := cliams["userId"].(string)
+		exp := int64(claims["expiresAt"].(float64))
+		id := claims["userId"].(string)
+		if time.Now().Unix() > exp {
+			WriteJSON(w, http.StatusUnauthorized, "Invalid token")
+			return
+		}
 
-		fmt.Println(id)
-		// log.Fatal(id)
+		// Log user ID
+		fmt.Println("Authenticated user ID:", id)
 
+		// Pass user ID in context to the handler
 		ctx := context.WithValue(r.Context(), "userId", id)
 		handler.ServeHTTP(w, r.WithContext(ctx))
-		// handler(w, r)
 	}
-
 }
 
 func verifyToken(tokenString string) (*jwt.Token, error) {
-
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])

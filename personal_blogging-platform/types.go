@@ -24,3 +24,12 @@ type LoginRequest struct {
 	Email    string `josn:"email"`
 	Password string `json:"password"`
 }
+
+type Article struct {
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"createAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	UserId    string    `json:"userId"`
+}
