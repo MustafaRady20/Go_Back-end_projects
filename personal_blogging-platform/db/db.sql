@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS article(
     article_title VARCHAR(200) NOT NULL,
     article_content VARCHAR(20000) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATE ,
+    updated_at DATE   DEFAULT CURRENT_TIMESTAMP,
     user_id uuid ,
     FOREIGN KEY (user_id) REFERENCES users (ID)
 )

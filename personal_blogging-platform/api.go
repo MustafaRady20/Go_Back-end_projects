@@ -26,10 +26,27 @@ func (s *APIServer) Run() {
 	router.HandleFunc("/login", makeHTTPHandleFunc(s.Login)).Methods("POST")
 	router.HandleFunc("/blogs", isAuthorized(makeHTTPHandleFunc(s.getArticles))).Methods("GET")
 	router.HandleFunc("/article", isAuthorized(makeHTTPHandleFunc(s.createNewArticle))).Methods("POST")
+	router.HandleFunc("/UpdateArticle", isAuthorized(makeHTTPHandleFunc(s.updateArticle))).Methods("POST")
+
 
 	fmt.Printf("Server is running on port %v", s.ServerPort)
 	http.ListenAndServe(s.ServerPort, router)
 
+}
+
+func (s *APIServer) updateArticle(w http.ResponseWriter, r *http.Request) error {
+
+	var updated UpdatedArticle
+	err := json.NewDecoder(r.Body).Decode(&updated)
+	if err != nil {
+		return WriteJSON(w, http.StatusBadRequest, err.Error())
+	}
+	userId := r.Context().Value("userId").(string)
+	err = s.store.UpdateArticle(updated, userId)
+	if err != nil {
+		return WriteJSON(w, http.StatusBadRequest, err.Error())
+	}
+	return nil
 }
 
 func (s *APIServer) getArticles(w http.ResponseWriter, r *http.Request) error {
@@ -63,14 +80,4 @@ func (s *APIServer) createNewArticle(w http.ResponseWriter, r *http.Request) err
 	}
 	fmt.Println("success")
 	return nil
-}
-
-type apiFunc func(w http.ResponseWriter, r *http.Request) error
-
-func makeHTTPHandleFunc(f apiFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := f(w, r); err != nil {
-			WriteJSON(w, http.StatusBadRequest, err.Error())
-		}
-	}
 }

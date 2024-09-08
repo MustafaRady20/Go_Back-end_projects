@@ -126,15 +126,13 @@ func isAuthorized(handler http.HandlerFunc) http.HandlerFunc {
 			WriteJSON(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
-
-		// Log user ID
-		fmt.Println("Authenticated user ID:", id)
-
-		// Pass user ID in context to the handler
+		
 		ctx := context.WithValue(r.Context(), "userId", id)
 		handler.ServeHTTP(w, r.WithContext(ctx))
 	}
 }
+
+
 
 func verifyToken(tokenString string) (*jwt.Token, error) {
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {

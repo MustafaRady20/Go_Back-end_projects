@@ -33,3 +33,8 @@ type Article struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 	UserId    string    `json:"userId"`
 }
+
+type UpdatedArticle struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}

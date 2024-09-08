@@ -12,6 +12,7 @@ type Storage interface {
 	GetUserByEmail(email string) (*User, error)
 	getAllArticles() ([]*Article, error)
 	CreateArticle(userId string, article Article) error
+	UpdateArticle(newArticle UpdatedArticle, userid string) error
 }
 type PostgresStore struct {
 	db *sql.DB
@@ -55,6 +56,7 @@ func (s *PostgresStore) GetUserByEmail(email string) (*User, error) {
 
 	return user, nil
 }
+
 func (s *PostgresStore) getAllArticles() ([]*Article, error) {
 
 	SQLstatement := `SELECT * FROM article`
@@ -63,7 +65,7 @@ func (s *PostgresStore) getAllArticles() ([]*Article, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}
-	defer rows.Close() 
+	defer rows.Close()
 
 	articles := []*Article{}
 
@@ -93,6 +95,17 @@ func (s *PostgresStore) CreateArticle(userId string, article Article) error {
 	return nil
 }
 
+func (s *PostgresStore) UpdateArticle(newArticle UpdatedArticle, userid string) error {
+
+	sqlStatment := `UPDATE article SET article_title=$1,article_content = $2 WHERE user_id =$3`
+
+	_, err := s.db.Exec(sqlStatment, &newArticle.Title, &newArticle.Content, &userid)
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func ScanIntoArticle(rows *sql.Rows) (*Article, error) {
 	article := new(Article)
 	err := rows.Scan(&article.ID,
